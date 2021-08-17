@@ -43,11 +43,12 @@ if __name__ == '__main__':
     nlags = 10
 
     for task in tasks_list:
+        alltau = np.zeros((len(sublist),400))
+        allrho1 = np.zeros((len(sublist),400))
+
         for i,sub in enumerate(sublist):
             s3.download_file(bucket, f'foundcog-adult-pilot-2/volumetric_preprocessing/timecourses/sub-{sub:02d}/sub-{sub:02d}_ses-001_task-{task}_Schaefer400_timecourses.txt', f'sub-{sub:02d}_ses-001_task-{task}_Schaefer400_timecourses.txt')
             os.system(f'mv sub-{sub:02d}_ses-001_task-{task}_Schaefer400_timecourses.txt ./temp')
-            alltau = np.zeros((len(sublist),400))
-            allrho1 = np.zeros((len(sublist),400))
             ts_df = np.loadtxt(os.path.join(f'./temp/sub-{sub:02d}_ses-001_task-{task}_Schaefer400_timecourses.txt'))
             timescale = np.zeros((ts_df.shape[1], nlags))
             for ROI in range(0,ts_df.shape[1]):
@@ -62,7 +63,7 @@ if __name__ == '__main__':
             plt.close()
 
             
-        '''    for ROI in range(0,ts_df.shape[1]):
+            for ROI in range(0,ts_df.shape[1]):
                 timecourse=ts_df[9:,ROI]
                 order = (1,0,1)
                 allrho1[i,ROI], alltau[i,ROI] = calculate_tau(timecourse,order)
@@ -82,7 +83,7 @@ if __name__ == '__main__':
         np.savetxt(f'./Results/intrinsic_timescales/estimatedtau_foundcog-pilot-2_{task}.txt',alltau)
 
         allrho1_df.to_csv(f'./Results/intrinsic_timescales/estimatedrho1_foundcog-pilot-2_{task}.csv')
-        np.savetxt(f'./Results/intrinsic_timescales/estimatedrho1_foundcog-pilot-2_{task}.txt',allrho1)'''
+        np.savetxt(f'./Results/intrinsic_timescales/estimatedrho1_foundcog-pilot-2_{task}.txt',allrho1)
 
 
 
