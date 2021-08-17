@@ -24,5 +24,5 @@ if __name__ == '__main__':
     nib.save(outimage,outname)
 
     outimage_zscore = nib.Nifti1Image(outvolume_zscore, affine=atlas.affine)
-    outname_zscore = ('./Results/intrinsic_timescales/tau_brainrender_resting_run-001.nii.gz')
+    outname_zscore = ('./Results/intrinsic_timescales/tau_brainrender_resting_run-001_zscore.nii.gz')
     nib.save(outimage_zscore,outname_zscore)
