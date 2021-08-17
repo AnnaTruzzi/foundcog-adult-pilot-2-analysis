@@ -10,6 +10,7 @@ import boto3
 from scipy.stats import spearmanr
 import pickle
 import nibabel as nib
+from scipy.stats import mannwhitneyu
 
 def average_2runs(movie_list, run_list, sub, TR, movie_len):
     betweenrun = []
@@ -31,8 +32,6 @@ def average_2runs(movie_list, run_list, sub, TR, movie_len):
     return np.mean(np.array(betweenrun),axis=0)
 
 
-
-
 if __name__ == '__main__':
     sub_list = [2,3,4,5,6,7,8,9,10,11,12,13,14]
     movie_list = ['piper', 'bathsong', 'dog', 'forest', 'minions_supermarket', 'new_orleans']
@@ -46,7 +45,7 @@ if __name__ == '__main__':
     timecourses_mean = []
     output_correlations = {}
 
-    task_list = ['run_ISC', 'brain_render_file', 'plot_by_movie']
+    task_list = ['plot_and_stats']  # Possible values : 'run_ISC', 'brain_render_file', 'plot_and_stats'
 
     for task in task_list:
         if task == 'run_ISC':
@@ -59,6 +58,8 @@ if __name__ == '__main__':
                         s3.download_file(bucket, f'foundcog-adult-pilot-2/bids/sub-{sub:02d}/ses-001/func/sub-{sub:02d}_ses-001_task-{run}_events.tsv', f'sub-{sub:02d}_ses-001_task-{run}_events.tsv')
                         os.system(f'mv sub-{sub:02d}_ses-001_task-{run}_events.tsv ./temp')
                 timecourses_mean.append(average_2runs(movie_list, run_list, sub, TR, movie_len))
+                with open('Results/Timecourses_average_across_runs.pickle','wb') as f:
+                    pickle.dump(timecourses_mean,f)
 
             for movie_ind,movie in enumerate(movie_list):
                 allcorr = np.zeros((ROInum,len(sub_list)))
@@ -69,15 +70,35 @@ if __name__ == '__main__':
                         othersub = np.delete(allsub,sub_ind,axis=0)
                         othersub_average = np.mean(othersub[:,movie_ind,:,ROI],axis = 0)
                         corr,p = spearmanr(curr_sub, othersub_average)
-                        if np.isnan(corr):
-                            print(sub_ind,ROI)
-                            print(curr_sub)
-                            print(othersub_average)
+                        #if np.isnan(corr):
+                            #print(sub_ind,ROI)
+                            #print(curr_sub)
+                            #print(othersub_average)
                         allcorr[ROI,sub_ind] = corr
                 output_correlations[movie] = allcorr
             with open('Results/ISC/ISC_allcorr.pickle', 'wb') as f:
                 pickle.dump(output_correlations ,f)
         
+            allcorr_nulldist = []
+            permutations = 10000
+            print('working on permutations')
+            for perm in range(0,permutations):
+                ROI = random.choice(list(range(0,ROInum)))
+                movie_ind = np.where(np.array(movie_list) == random.choice(movie_list))[0][0]
+                movie_random = np.where(np.array(movie_list) == random.choice(movie_list))[0][0]
+                print(movie_ind)
+                print(movie_random)
+                sub_ind = random.choice(list(range(0,len(sub_list))))
+                allsub = np.array(timecourses_mean)
+                curr_sub = allsub[sub_ind,movie_ind,:,ROI]
+                othersub = np.delete(allsub,sub_ind,axis=0)
+                othersub_average = np.nanmean(othersub[:,movie_random,:,ROI],axis = 0)
+                corr,p = spearmanr(curr_sub, othersub_average)
+                print(corr)
+                allcorr_nulldist.append(corr)
+            with open('Results/ISC/ISC_nulldist.pickle', 'wb') as f:
+                pickle.dump(allcorr_nulldist ,f)
+
         elif task == 'brain_render_file':
             atlas = nib.load('Schaefer2018_400Parcels_17Networks_order_FSLMNI152_1mm.nii.gz')
             rois_data = atlas.get_fdata()
@@ -96,7 +117,46 @@ if __name__ == '__main__':
                 nib.save(outimage,outname)
 
 
-        #elif task == 'plot_by_movie':
+        elif task == 'plot_and_stats':
+            with open('Results/ISC/ISC_allcorr.pickle','rb') as f:
+                allcorr = pickle.load(f)
+            with open('Results/ISC/ISC_nulldist.pickle','rb') as f:
+                nulldist = pickle.load(f)
+            movie_names = []
+            movie_corrs = []
+            for movie in movie_list:
+                name = np.repeat(movie, allcorr[movie].shape[0])
+                corr = np.nanmean(np.array(allcorr[movie]),axis=1)
+                movie_names.extend(name)
+                movie_corrs.extend(corr)
+            plot_dic = {'movie_name' : movie_names,
+                        'movie_corr' : movie_corrs}
+            plot_df = pd.DataFrame(plot_dic)
+            sns.barplot(x = 'movie_name', y = 'movie_corr', data = plot_df)     
+            plt.savefig('Results/ISC/ISC_barplot_bymovie.png')
+            plt.close()
+            
+            with open('Results/ISC/ISC_stats.txt','w') as f:
+                for movie in movie_list:
+                    movie_dist = np.array(plot_df.loc[plot_df['movie_name'] == movie]['movie_corr'])
+                    u, p = mannwhitneyu(np.array(nulldist),movie_dist)
+                    print(movie)
+                    print(u,p)
+                    f.write(f'### {movie} vs null distribution ### \n')
+                    f.write(f'u = {u} - p = {round(p,2)} \n')
+                    f.write('\n \n')
+
+                    distplot_dict = {'type': np.concatenate((np.repeat(movie,len(movie_dist)),np.repeat('null',len(nulldist)))),
+                                    'values': np.concatenate((movie_dist,np.array(nulldist)))}
+                    distplot_df = pd.DataFrame(distplot_dict)
+                    sns.displot(distplot_df, x = 'values', hue = 'type')
+                    plt.savefig(f'Results/ISC/{movie}_and_null_distplot.png')
+                    plt.close()
+                f.close()
+
+            a = 1
+
+
 
 
     
