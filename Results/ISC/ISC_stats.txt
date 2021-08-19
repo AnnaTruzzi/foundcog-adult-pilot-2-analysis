@@ -1,24 +1,24 @@
 ### piper vs null distribution ### 
-u = 1949943.5 - p = 0.2 
+u = 1938780.5 - p = 0.15 
 
  
 ### bathsong vs null distribution ### 
-u = 1477878.0 - p = 0.0 
+u = 1502499.5 - p = 0.0 
 
  
 ### dog vs null distribution ### 
-u = 1614340.0 - p = 0.0 
+u = 1619148.0 - p = 0.0 
 
  
 ### forest vs null distribution ### 
-u = 1550773.0 - p = 0.0 
+u = 1908736.5 - p = 0.06 
 
  
 ### minions_supermarket vs null distribution ### 
-u = 1595290.5 - p = 0.0 
+u = 1381016.0 - p = 0.0 
 
  
 ### new_orleans vs null distribution ### 
-u = 1571691.0 - p = 0.0 
+u = 1546746.0 - p = 0.0 
 
  

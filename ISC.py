@@ -33,7 +33,7 @@ def average_2runs(movie_list, run_list, sub, TR, movie_len):
 
 
 if __name__ == '__main__':
-    sub_list = [2,3,4,5,6,7,8,9,10,11,12,13,14]
+    sub_list = [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18]
     movie_list = ['piper', 'bathsong', 'dog', 'forest', 'minions_supermarket', 'new_orleans']
     run_list= ['video_run-001','video_run-002']
     s3=boto3.client('s3')
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     timecourses_mean = []
     output_correlations = {}
 
-    task_list = ['plot_and_stats']  # Possible values : 'run_ISC', 'brain_render_file', 'plot_and_stats'
+    task_list = ['run_ISC', 'brain_render_file', 'plot_and_stats']  # Possible values : 'run_ISC', 'brain_render_file', 'plot_and_stats'
 
     for task in task_list:
         if task == 'run_ISC':
