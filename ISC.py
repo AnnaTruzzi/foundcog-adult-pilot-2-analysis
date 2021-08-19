@@ -26,7 +26,7 @@ def average_2runs(movie_list, run_list, sub, TR, movie_len):
             for onset in onset_list:
                 start = int(round(onset/TR)-1)
                 stop = int(round(start + (movie_len/TR)))
-                withinrep.append(timecourse[start:stop,:])
+                withinrep.append(timecourse[start+3:stop,:])
             withinrun.append(np.mean(np.array(withinrep),axis=0))
         betweenrun.append(np.array(withinrun))
     return np.mean(np.array(betweenrun),axis=0)
@@ -43,9 +43,7 @@ if __name__ == '__main__':
     ROInum = 400
 
     timecourses_mean = []
-    output_correlations = {}
-
-    task_list = ['run_ISC', 'brain_render_file', 'plot_and_stats']  # Possible values : 'run_ISC', 'brain_render_file', 'plot_and_stats'
+    task_list = ['run_ISC', 'brain_render_file', 'plot_and_stats_ISC','run_dynamic_ISC']  # Possible values : 'run_ISC', 'brain_render_file', 'plot_and_stats_ISC'
 
     for task in task_list:
         if task == 'run_ISC':
@@ -58,9 +56,10 @@ if __name__ == '__main__':
                         s3.download_file(bucket, f'foundcog-adult-pilot-2/bids/sub-{sub:02d}/ses-001/func/sub-{sub:02d}_ses-001_task-{run}_events.tsv', f'sub-{sub:02d}_ses-001_task-{run}_events.tsv')
                         os.system(f'mv sub-{sub:02d}_ses-001_task-{run}_events.tsv ./temp')
                 timecourses_mean.append(average_2runs(movie_list, run_list, sub, TR, movie_len))
-                with open('Results/Timecourses_average_across_runs.pickle','wb') as f:
+                with open('Results/Timecourses_average_across_runs_skip3.pickle','wb') as f:
                     pickle.dump(timecourses_mean,f)
 
+            output_correlations = {}
             for movie_ind,movie in enumerate(movie_list):
                 allcorr = np.zeros((ROInum,len(sub_list)))
                 for ROI in range(0,ROInum): 
@@ -76,7 +75,7 @@ if __name__ == '__main__':
                             #print(othersub_average)
                         allcorr[ROI,sub_ind] = corr
                 output_correlations[movie] = allcorr
-            with open('Results/ISC/ISC_allcorr.pickle', 'wb') as f:
+            with open('Results/ISC/ISC_allcorr_skip3.pickle', 'wb') as f:
                 pickle.dump(output_correlations ,f)
         
             allcorr_nulldist = []
@@ -96,7 +95,7 @@ if __name__ == '__main__':
                 corr,p = spearmanr(curr_sub, othersub_average)
                 print(corr)
                 allcorr_nulldist.append(corr)
-            with open('Results/ISC/ISC_nulldist.pickle', 'wb') as f:
+            with open('Results/ISC/ISC_nulldist_skip3.pickle', 'wb') as f:
                 pickle.dump(allcorr_nulldist ,f)
 
         elif task == 'brain_render_file':
@@ -113,14 +112,14 @@ if __name__ == '__main__':
                     outvolume[roi_index] = corrdata[roi]
                     print('roi',roi)
                 outimage = nib.Nifti1Image(outvolume, affine=atlas.affine)
-                outname = (f'./Results/ISC/{movie}_corr_brainrender.nii.gz')
+                outname = (f'./Results/ISC/{movie}_corr_brainrender_skip3.nii.gz')
                 nib.save(outimage,outname)
 
 
-        elif task == 'plot_and_stats':
-            with open('Results/ISC/ISC_allcorr.pickle','rb') as f:
+        elif task == 'plot_and_stats_ISC':
+            with open('Results/ISC/ISC_allcorr_skip3.pickle','rb') as f:
                 allcorr = pickle.load(f)
-            with open('Results/ISC/ISC_nulldist.pickle','rb') as f:
+            with open('Results/ISC/ISC_nulldist_skip3.pickle','rb') as f:
                 nulldist = pickle.load(f)
             movie_names = []
             movie_corrs = []
@@ -133,10 +132,10 @@ if __name__ == '__main__':
                         'movie_corr' : movie_corrs}
             plot_df = pd.DataFrame(plot_dic)
             sns.barplot(x = 'movie_name', y = 'movie_corr', data = plot_df)     
-            plt.savefig('Results/ISC/ISC_barplot_bymovie.png')
+            plt.savefig('Results/ISC/ISC_barplot_bymovie_skip3.png')
             plt.close()
             
-            with open('Results/ISC/ISC_stats.txt','w') as f:
+            with open('Results/ISC/ISC_stats_skip3.txt','w') as f:
                 for movie in movie_list:
                     movie_dist = np.array(plot_df.loc[plot_df['movie_name'] == movie]['movie_corr'])
                     u, p = mannwhitneyu(np.array(nulldist),movie_dist)
@@ -150,11 +149,41 @@ if __name__ == '__main__':
                                     'values': np.concatenate((movie_dist,np.array(nulldist)))}
                     distplot_df = pd.DataFrame(distplot_dict)
                     sns.displot(distplot_df, x = 'values', hue = 'type')
-                    plt.savefig(f'Results/ISC/{movie}_and_null_distplot.png')
+                    plt.savefig(f'Results/ISC/{movie}_and_null_distplot_skip3.png')
                     plt.close()
                 f.close()
 
-            a = 1
+
+        elif task == 'run_dynamic_ISC':
+            output_dynamic = {}
+            with open('Results/Timecourses_average_across_runs_skip3.pickle','rb') as f:
+                timecourses_mean = pickle.load(f)
+            windows = np.arange(0,35,5)
+            fig, ax = plt.subplots(nrows= 1, ncols= 1,figsize=(12,8))
+            for movie_ind,movie in enumerate(movie_list):
+                allcorr = np.zeros((round((movie_len/TR)/5),len(sub_list)))
+                for win_ind,win_start in enumerate(windows):
+                    start = win_start
+                    if win_start < 30:
+                        stop = start + 5
+                    else:
+                        stop = 34
+                    for sub_ind,sub in enumerate(sub_list):
+                        allsub = np.array(timecourses_mean)
+                        curr_sub = allsub[sub_ind,movie_ind,start:stop,:]
+                        othersub = np.delete(allsub,sub_ind,axis=0)
+                        othersub_average = np.mean(othersub[:,movie_ind,start:stop,:],axis = 0)
+                        corr,p = spearmanr(curr_sub.flatten(), othersub_average.flatten())
+                        allcorr[win_ind,sub_ind] = corr
+                ax.plot(np.mean(allcorr,axis = 1), label=movie)
+                output_dynamic[movie] = allcorr
+            ax.legend()
+            ax.set_xticklabels(['0','0-5','6-10','11-15','16-20','21-25','26-30','31-34'])
+            plt.savefig('Results/ISC/Dynamic_ISC_plot_skip3.png')
+            plt.close()
+            with open('Results/ISC/Dynamic_ISC_allcorr_skip3.pickle', 'wb') as f:
+                pickle.dump(output_dynamic ,f)
+            
 
 
 

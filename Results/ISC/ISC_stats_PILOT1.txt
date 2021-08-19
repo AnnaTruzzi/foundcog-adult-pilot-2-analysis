@@ -1,0 +1,28 @@
+### moana vs null distribution - PILOT1### 
+u = 1801647.5 - p = 0.0 
+
+ 
+### piper vs null distribution - PILOT1### 
+u = 1674210.5 - p = 0.0 
+
+ 
+### bathsong vs null distribution - PILOT1### 
+u = 1691822.0 - p = 0.0 
+
+ 
+### dog vs null distribution - PILOT1### 
+u = 1959702.0 - p = 0.25 
+
+ 
+### forest vs null distribution - PILOT1### 
+u = 1913988.5 - p = 0.07 
+
+ 
+### minions_supermarket vs null distribution - PILOT1### 
+u = 1668394.0 - p = 0.0 
+
+ 
+### new_orleans vs null distribution - PILOT1### 
+u = 1992533.0 - p = 0.45 
+
+ 
