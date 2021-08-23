@@ -1,6 +1,10 @@
 .vscode/launch.json
 deriv-2_topup/
+with-confounds/
+bids/
+glasser_et_al_2016/
 models/
 bids/
 temp/
 
+__pycache__/fmri_analysis.cpython-39.pyc
