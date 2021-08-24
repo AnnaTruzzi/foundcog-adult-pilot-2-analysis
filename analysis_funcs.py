@@ -13,7 +13,7 @@ def get_rois(roi, glasserpth):
         roi - either 'ventralvisual' or 'earlyvisual'
     """
     # Check if ROI is a viable option
-    roi_options = ['ventralvisual', 'earlyvisual']
+    roi_options = ['ventralvisual', 'earlyvisual', 'scene-occipital']
     if not roi in roi_options:
         raise NotImplementedError('the specified ROI is not defined. Please select either ventralvisual or earlyvisual. \n Alternatively, implement new ROIs in the get_rois function')
 
@@ -22,6 +22,8 @@ def get_rois(roi, glasserpth):
         visualrois=set([7,18,22, 153,154,160,163])
     elif roi=='earlyvisual':
         visualrois=set([1,4,5,6])
+    elif roi=='scene-occipital':
+        visualrois=set([155,126,127,14,31,20,21,22,159])
 
     # Load Glasser et al 2006 labels
     mmp=[]

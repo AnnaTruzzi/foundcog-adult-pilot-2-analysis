@@ -9,7 +9,7 @@ import seaborn as sns
 
 from scipy.spatial import distance
 
-from fmri_analysis import get_rois, hierarchical_clustering
+from analysis_funcs import get_rois, hierarchical_clustering
 
 import nilearn
 from nilearn import plotting
@@ -181,7 +181,7 @@ def mvpa_rdms(betas, roi, params, mainpth, task='pictures', randomise_columns_fo
 
     return rdms
 
-def mvpa_acrosssubj(subjlist, mainpth, randomise_for_testing_flag='' , across_subject_average_type='mean', tosubtract='none',figpth='figs', modelpth='models', mvpa_across_hemi=False):
+def mvpa_acrosssubj(subjlist, mainpth, roi_list, randomise_for_testing_flag='' , remap='', across_subject_average_type='mean', tosubtract='none',figpth='figs', modelpth='models', mvpa_across_hemi=False):
     """
     args:
         across_subject_average_type - which centre to use, either mean or median
@@ -195,7 +195,7 @@ def mvpa_acrosssubj(subjlist, mainpth, randomise_for_testing_flag='' , across_su
     else:
         hemilist_mvpa = hemilist
     
-    with open(os.path.join(mainpth,'results', f'mvpa_contrast_results_subtract-{tosubtract}.txt'), 'w') as conf:                        
+    with open(os.path.join(mainpth,'results', f'mvpa_contrast_results_subtract-{tosubtract}{remap}_average-{across_subject_average_type}.txt'), 'w') as conf:                        
         conf.write(f'*** MVPA contrasts using {across_subject_average_type}\n')
 
         numsubj=len(subjlist)
@@ -206,9 +206,9 @@ def mvpa_acrosssubj(subjlist, mainpth, randomise_for_testing_flag='' , across_su
         elif across_subject_average_type=='median':
             avfunc=np.median
 
-        with open(os.path.join(figpth, f'rdmsummary_rdms{randomise_for_testing_flag}_subtract-{tosubtract}.html'),'w') as fhtml:
+        with open(os.path.join(figpth, f'rdmsummary_rdms{randomise_for_testing_flag}{remap}_subtract-{tosubtract}.html'),'w') as fhtml:
 
-            for roi in ['ventralvisual','earlyvisual']:
+            for roi in roi_list:
                 fhtml.write(f'<h1>analysis with confounds: ROI {roi} Subtract {tosubtract}</h1>')
                 rdms = []
                 for subjind in subjlist:
@@ -219,7 +219,7 @@ def mvpa_acrosssubj(subjlist, mainpth, randomise_for_testing_flag='' , across_su
                 rdms_across_subj=np.stack([rdm[hemi]['picpic'] for rdm in rdms for hemi in hemilist_mvpa], axis=2).transpose([2,0,1]) 
                 order_rdm = avfunc(rdms_across_subj, axis=0) 
 
-                dendrofn=os.path.join('mvpa_acrosssubj', f'dendrogram_roi-{roi}_orderby-videos_subtract-{tosubtract}.png')
+                dendrofn=os.path.join('mvpa_acrosssubj', f'dendrogram_roi-{roi}_orderby-videos_average-{across_subject_average_type}_subtract-{tosubtract}.png')
                 os.makedirs(os.path.join(figpth,'mvpa_acrosssubj'), exist_ok=True)
                 
                 order = hierarchical_clustering(order_rdm, tasklist['pictures']['trial_types'], outpath = os.path.join(figpth, dendrofn))
@@ -273,7 +273,7 @@ def mvpa_acrosssubj(subjlist, mainpth, randomise_for_testing_flag='' , across_su
                     df = df.reindex(index=order,columns=order)
 
                     df = df.rename(columns = {key:key.replace('.mp4','') for key in df.columns}, index=  {key:key.replace('.mp4','') for key in df.index}) # Remove .mp4
-                    df.to_csv(os.path.join('./with-confounds/results', f'across-subj_comparison-{rdm_summary}_hemi-{hemi}_roi-{roi}_subtract-{tosubtract}_rdm.csv'))
+                    df.to_csv(os.path.join('./with-confounds/results', f'across-subj_comparison-{rdm_summary}_hemi-{hemi}_roi-{roi}_average-{across_subject_average_type}_subtract-{tosubtract}_rdm.csv'))
                     
                     fig, ax =plt.subplots(figsize=(8,8))
                     sns.heatmap(df, ax=ax)
@@ -281,7 +281,7 @@ def mvpa_acrosssubj(subjlist, mainpth, randomise_for_testing_flag='' , across_su
                     ax.set_aspect('equal', 'box')
                     plt.tight_layout()
                     os.makedirs(os.path.join(figpth, 'mvpa_acrosssubj'), exist_ok=True)
-                    rdmname = f'across-subj_comparison-{rdm_summary}_hemi-{hemi}_roi-{roi}_subtract-{tosubtract}_rdm.png'
+                    rdmname = f'across-subj_comparison-{rdm_summary}_hemi-{hemi}_roi-{roi}_average-{across_subject_average_type}_subtract-{tosubtract}_rdm.png'
                     plt.savefig(os.path.join(figpth, 'mvpa_acrosssubj',rdmname))
                     fhtml.write(f'<td><img src="mvpa_acrosssubj/{rdmname}" width="600"/></td>')
                     plt.close()
@@ -292,8 +292,7 @@ def mvpa_acrosssubj(subjlist, mainpth, randomise_for_testing_flag='' , across_su
 if __name__ == '__main__':
     hemilist = ['L','R']
     subjects = list(range(2,19))
-    subjects.remove(17)
-    #subjects = [2,3,4]
+    #subjects=[18]
     subjects = [f'{subjind:02}' for subjind in subjects]
 
     mainpth = '/home/CUSACKLAB/clionaodoherty/foundcog-adult-pilot-2-analysis/with-confounds/'
@@ -313,7 +312,7 @@ if __name__ == '__main__':
                         },
                 'video':{
                         'numruns':2,
-                        'trial_types':[ 'bathsong.mp4', 'dog.mp4', 'new_orelans.mp4', 'minions_supermarket.mp4', 'forest.mp4', 'piper.mp4'],
+                        'trial_types':[ 'bathsong.mp4', 'dog.mp4', 'new_orleans.mp4', 'minions_supermarket.mp4', 'forest.mp4', 'piper.mp4'],
                         'n_reps':1
                         }
                 }
@@ -333,29 +332,45 @@ if __name__ == '__main__':
     else:
         randomise_for_testing_flag = ''
     
-    tosubtract='none'
+    remap_pictures = False
+    if remap_pictures:
+        remap='_remap'
+    else:
+        remap=''
+    
+    remap_shuffle = False
+    if remap_shuffle:
+        remap='_remap-shuffle'
+    
+    tosubtract='voxelmean'
+    across_hemi=True
+    roi_list = ['ventralvisual','earlyvisual','scene-occipital']
 
     task = 'pictures'
     params = tasklist[task]
+    if remap_pictures:
+        params['trial_types'] = tasklist['video']['trial_types']
 
-    for subjind in subjects:
-        
-        if not os.path.exists(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}_betas.pickle')):
-            with open(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}_models.pickle'),'rb') as f:
-                models=pickle.load(f)
+    get_rdms = False
+    if get_rdms:
+        for subjind in subjects:
             
-            betas = mvpa_betas(models, subjind, task='pictures',tasklist=tasklist)
-            with open(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}_betas.pickle'),'wb') as f:
-                pickle.dump(betas,f)
-        else:
-            with open(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}_betas.pickle'),'rb') as f:
-                betas = pickle.load(f)
-        
-        for roi in ['earlyvisual','ventralvisual']:
-            if not os.path.exists(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_roi-{roi}_across-runs-reps_rdms{randomise_for_testing_flag}_subtract-{tosubtract}.pickle')):
-                rdms = mvpa_rdms(betas, roi, params, mainpth, randomise_columns_for_testing=randomise_columns_for_testing, tosubtract=tosubtract)
+            if not os.path.exists(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}{remap}_betas.pickle')):
+                with open(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}{remap}_models.pickle'),'rb') as f:
+                    models=pickle.load(f)
+                
+                betas = mvpa_betas(models, subjind, task='pictures',tasklist=tasklist)
+                with open(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}{remap}_betas.pickle'),'wb') as f:
+                    pickle.dump(betas,f)
+            else:
+                with open(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_task-{task}{remap}_betas.pickle'),'rb') as f:
+                    betas = pickle.load(f)
+            
+            for roi in roi_list:
+                #if not os.path.exists(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_roi-{roi}_across-runs-reps_rdms{randomise_for_testing_flag}_subtract-{tosubtract}.pickle')):
+                rdms = mvpa_rdms(betas, roi, params, mainpth, randomise_columns_for_testing=randomise_columns_for_testing, tosubtract=tosubtract, mvpa_across_hemi=across_hemi)
                 # Save between-run RDMS values per visual area/subject (in each rdm file both hemisphere are included)
                 with open(os.path.join(modelpth,f'sub-{subjind}',f'sub-{subjind}_roi-{roi}_across-runs-reps_rdms{randomise_for_testing_flag}_subtract-{tosubtract}.pickle'), 'wb') as f:
                     pickle.dump(rdms, f)
     
-    mvpa_acrosssubj(subjects,mainpth,across_subject_average_type='median')
+    mvpa_acrosssubj(subjects,mainpth, roi_list, across_subject_average_type='median', tosubtract=tosubtract , mvpa_across_hemi=across_hemi)

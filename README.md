@@ -22,4 +22,8 @@ s3://foundcog-adult-pilot/foundcog-adult-pilot-2/
 
 - Results for with betas calculated per hemisphere and no subtraction of the mean are present for subj 2-14. Remaining to be calculated after further preprocessing
 
+### COD 24/08/21
+- Added an option in the glm_modelling script to split movies according to a specified # seconds. This also tags the repetitions of a trial_type and has been hard coded in the mark_reps block to read the order from the expt_history file. This will need to be streamlined at a later date.
+
 **note** all results and code is a work in progress. Code testing, debugging and thorough sanity checking is yet to be completed.
+
