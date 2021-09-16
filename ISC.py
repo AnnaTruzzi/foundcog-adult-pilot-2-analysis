@@ -26,10 +26,21 @@ def average_2runs(movie_list, run_list, sub, TR, movie_len):
             for onset in onset_list:
                 start = int(round(onset/TR)-1)
                 stop = int(round(start + (movie_len/TR)))
-                withinrep.append(timecourse[start+3:stop,:])
+                withinrep.append(timecourse[start:stop,:])
             withinrun.append(np.mean(np.array(withinrep),axis=0))
         betweenrun.append(np.array(withinrun))
     return np.mean(np.array(betweenrun),axis=0)
+
+
+
+def roi_render(index_list,atlas,outname):
+    rois_data = atlas.get_fdata()
+    outvolume = np.zeros((182, 218, 182))
+    for roi in index_list:
+        roi_index = np.where(rois_data==roi+1)
+        outvolume[roi_index] = 1
+    outimage = nib.Nifti1Image(outvolume, affine=atlas.affine)
+    nib.save(outimage,outname)
 
 
 if __name__ == '__main__':
@@ -75,7 +86,7 @@ if __name__ == '__main__':
                             #print(othersub_average)
                         allcorr[ROI,sub_ind] = corr
                 output_correlations[movie] = allcorr
-            with open('Results/ISC/ISC_allcorr_skip3.pickle', 'wb') as f:
+            with open('Results/ISC/ISC_allcorr.pickle', 'wb') as f:
                 pickle.dump(output_correlations ,f)
         
             allcorr_nulldist = []
@@ -95,7 +106,7 @@ if __name__ == '__main__':
                 corr,p = spearmanr(curr_sub, othersub_average)
                 print(corr)
                 allcorr_nulldist.append(corr)
-            with open('Results/ISC/ISC_nulldist_skip3.pickle', 'wb') as f:
+            with open('Results/ISC/ISC_nulldist.pickle', 'wb') as f:
                 pickle.dump(allcorr_nulldist ,f)
 
         elif task == 'brain_render_file':
@@ -112,14 +123,14 @@ if __name__ == '__main__':
                     outvolume[roi_index] = corrdata[roi]
                     print('roi',roi)
                 outimage = nib.Nifti1Image(outvolume, affine=atlas.affine)
-                outname = (f'./Results/ISC/{movie}_corr_brainrender_skip3.nii.gz')
+                outname = (f'./Results/ISC/{movie}_corr_brainrender.nii.gz')
                 nib.save(outimage,outname)
 
 
         elif task == 'plot_and_stats_ISC':
-            with open('Results/ISC/ISC_allcorr_skip3.pickle','rb') as f:
+            with open('Results/ISC/ISC_allcorr.pickle','rb') as f:
                 allcorr = pickle.load(f)
-            with open('Results/ISC/ISC_nulldist_skip3.pickle','rb') as f:
+            with open('Results/ISC/ISC_nulldist.pickle','rb') as f:
                 nulldist = pickle.load(f)
             movie_names = []
             movie_corrs = []
@@ -132,10 +143,10 @@ if __name__ == '__main__':
                         'movie_corr' : movie_corrs}
             plot_df = pd.DataFrame(plot_dic)
             sns.barplot(x = 'movie_name', y = 'movie_corr', data = plot_df)     
-            plt.savefig('Results/ISC/ISC_barplot_bymovie_skip3.png')
+            plt.savefig('Results/ISC/ISC_barplot_bymovie.png')
             plt.close()
             
-            with open('Results/ISC/ISC_stats_skip3.txt','w') as f:
+            with open('Results/ISC/ISC_stats.txt','w') as f:
                 for movie in movie_list:
                     movie_dist = np.array(plot_df.loc[plot_df['movie_name'] == movie]['movie_corr'])
                     u, p = mannwhitneyu(np.array(nulldist),movie_dist)
@@ -149,7 +160,7 @@ if __name__ == '__main__':
                                     'values': np.concatenate((movie_dist,np.array(nulldist)))}
                     distplot_df = pd.DataFrame(distplot_dict)
                     sns.displot(distplot_df, x = 'values', hue = 'type')
-                    plt.savefig(f'Results/ISC/{movie}_and_null_distplot_skip3.png')
+                    plt.savefig(f'Results/ISC/{movie}_and_null_distplot.png')
                     plt.close()
                 f.close()
 
@@ -158,10 +169,27 @@ if __name__ == '__main__':
             output_dynamic = {}
             with open('Results/Timecourses_average_across_runs_skip3.pickle','rb') as f:
                 timecourses_mean = pickle.load(f)
+            network_file = pd.read_csv('/Data/Schaefer2018_400Parcels_17Networks_order.txt',sep = '\t', header = None)
+            atlas = nib.load('Schaefer2018_400Parcels_17Networks_order_FSLMNI152_1mm.nii.gz')
+            roi_net_list = np.array([i.split("_")[2] for i in network_file[1]])
+            network_names = list(set(roi_net_list))
             windows = np.arange(0,35,5)
+            roi_names = np.array(network_file[1])
+            earlyvis_index = []
+            ventralvis_index = []
+            sceneareas_index = []
+            for i,roi in enumerate(roi_names):
+                if 'VisCent' in roi or 'VisPeri' in roi:
+                    earlyvis_index.append(i)
+                elif 'TempOcc_2' in roi or 'TempOcc_4' in roi or "TempPole" in roi:
+                    ventralvis_index.append(i)
+                elif 'Temp_' in roi or 'TempOcc_1' in roi or 'Rsp' in roi or 'ParOcc' in roi or 'PHC' in roi:
+                    sceneareas_index.append(i)
+            
+
             fig, ax = plt.subplots(nrows= 1, ncols= 1,figsize=(12,8))
             for movie_ind,movie in enumerate(movie_list):
-                allcorr = np.zeros((round((movie_len/TR)/5),len(sub_list)))
+                allcorr = np.zeros((round((movie_len/TR)/2),len(sub_list)))
                 for win_ind,win_start in enumerate(windows):
                     start = win_start
                     if win_start < 30:

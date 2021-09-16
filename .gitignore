@@ -10,5 +10,7 @@ remap/
 segmented/
 pilot-2-full-pipeline/
 pilot-2-full-shuffle/
-
+models/
+results/
+figs/
 __pycache__/fmri_analysis.cpython-39.pyc
